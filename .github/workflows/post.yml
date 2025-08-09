@@ -2,22 +2,117 @@ name: Telegram Autopost
 
 on:
   schedule:
-    - cron: "0 6 * * *"
-    - cron: "0 12 * * *"
-    - cron: "0 18 * * *"
+    - cron: "0 6 * * *"   # Утро (UTC)  -> 08:00 Europe/Moscow летом
+    - cron: "0 12 * * *"  # День  (UTC) -> 15:00/16:00 в зависимости от сезона
+    - cron: "0 18 * * *"  # Вечер (UTC) -> 21:00/22:00
   workflow_dispatch:
+    inputs:
+      post_type:
+        description: "Тип поста: morning | midday | evening"
+        required: true
+        default: "morning"
 
 jobs:
-  post:
+  post-morning:
+    if: github.event_name == 'schedule' && github.event.schedule == '0 6 * * *'
     runs-on: ubuntu-latest
+    env:
+      BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+      CHAT_ID: ${{ secrets.CHAT_ID }}
+      POST_TYPE: morning
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - run: pip install -r requirements.txt
+      - name: Check bot token (getMe)
+        run: |
+          set -e
+          curl -s "https://api.telegram.org/bot${BOT_TOKEN}/getMe" | tee getme.json
+          python - <<'PY'
+import json,sys
+d=json.load(open("getme.json"))
+ok=d.get("ok", False)
+print("getMe ok:", ok, "; user:", d.get("result",{}).get("username"))
+sys.exit(0 if ok else 1)
+PY
       - run: python bot/main.py
+
+  post-midday:
+    if: github.event_name == 'schedule' && github.event.schedule == '0 12 * * *'
+    runs-on: ubuntu-latest
     env:
       BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
       CHAT_ID: ${{ secrets.CHAT_ID }}
-      POST_TYPE: ${{ github.event.inputs.post_type || 'morning' }}
+      POST_TYPE: midday
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Check bot token (getMe)
+        run: |
+          set -e
+          curl -s "https://api.telegram.org/bot${BOT_TOKEN}/getMe" | tee getme.json
+          python - <<'PY'
+import json,sys
+d=json.load(open("getme.json"))
+ok=d.get("ok", False)
+print("getMe ok:", ok, "; user:", d.get("result",{}).get("username"))
+sys.exit(0 if ok else 1)
+PY
+      - run: python bot/main.py
+
+  post-evening:
+    if: github.event_name == 'schedule' && github.event.schedule == '0 18 * * *'
+    runs-on: ubuntu-latest
+    env:
+      BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+      CHAT_ID: ${{ secrets.CHAT_ID }}
+      POST_TYPE: evening
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Check bot token (getMe)
+        run: |
+          set -e
+          curl -s "https://api.telegram.org/bot${BOT_TOKEN}/getMe" | tee getme.json
+          python - <<'PY'
+import json,sys
+d=json.load(open("getme.json"))
+ok=d.get("ok", False)
+print("getMe ok:", ok, "; user:", d.get("result",{}).get("username"))
+sys.exit(0 if ok else 1)
+PY
+      - run: python bot/main.py
+
+  post-manual:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    env:
+      BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+      CHAT_ID: ${{ secrets.CHAT_ID }}
+      POST_TYPE: ${{ inputs.post_type }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Check bot token (getMe)
+        run: |
+          set -e
+          curl -s "https://api.telegram.org/bot${BOT_TOKEN}/getMe" | tee getme.json
+          python - <<'PY'
+import json,sys
+d=json.load(open("getme.json"))
+ok=d.get("ok", False)
+print("getMe ok:", ok, "; user:", d.get("result",{}).get("username"))
+sys.exit(0 if ok else 1)
+PY
+      - run: python bot/main.py
